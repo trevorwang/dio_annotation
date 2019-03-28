@@ -12,10 +12,11 @@ dependencies:
     sdk: flutter
   dio:
   source_gen:
+  built_collection:
+  code_builder:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  source_gen:
 
 # For information on the generic Dart part of this file, see the
 # following page: https://www.dartlang.org/tools/pub/pubspec
