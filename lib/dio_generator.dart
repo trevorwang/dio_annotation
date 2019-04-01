@@ -143,29 +143,44 @@ class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
   }
 
   Code _generateRequest(MethodElement m, ConstantReader httpMehod) {
+    final _queryParamsVar = "queryParameters";
+    final _optionsVar = "options";
     final path = _generatePath(m, httpMehod);
     final queries = _getAnnotations(m, annotations.Query);
-
     final queryParameters = queries.map((p, ConstantReader r) {
       final value = r.peek("value")?.stringValue ?? p.displayName;
       return MapEntry(literal(value), refer(p.displayName));
     });
+
+    final queryMap = _getAnnotations(m, annotations.QueryMap);
 
     final options = refer("RequestOptions").newInstance([], {
       "method": literal(httpMehod.peek("method").stringValue),
     });
 
     final namedArguments = <String, Expression>{};
-    namedArguments["queryParameters"] = literalMap(queryParameters);
+    namedArguments[_queryParamsVar] = refer(_queryParamsVar);
+    namedArguments[_optionsVar] = options;
 
-    namedArguments["options"] = options;
-    return Block.of([
+    final blocks = <Code>[];
+    blocks.add(literalMap(queryParameters, refer("String"), refer("dynamic"))
+        .assignFinal(_queryParamsVar)
+        .statement);
+    if (queryMap.isNotEmpty) {
+      blocks.add(refer('$_queryParamsVar.addAll').call(
+        [refer("${queryMap.keys.first.displayName} ?? {}")],
+      ).statement);
+    }
+
+    blocks.add(
       refer("dio.request")
           .call([
             path,
           ], namedArguments)
           .returned
           .statement,
-    ]);
+    );
+
+    return Block.of(blocks);
   }
 }

@@ -92,9 +92,9 @@ class QueryMap {
   const QueryMap({this.encoded = false});
 }
 
-@immutable
-class QueryName {
-  final String value;
-  final bool encoded;
-  const QueryName(this.value, {this.encoded});
-}
+// @immutable
+// class QueryName {
+//   final String value;
+//   final bool encoded;
+//   const QueryName(this.value, {this.encoded});
+// }
