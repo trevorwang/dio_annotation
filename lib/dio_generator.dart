@@ -1,15 +1,10 @@
 import 'package:analyzer/dart/element/element.dart';
-import 'package:analyzer/dart/element/type.dart';
-
 import 'package:build/build.dart';
-import 'package:build/src/builder/build_step.dart';
-import 'package:built_collection/built_collection.dart';
-import 'package:dart_style/dart_style.dart';
 import 'package:code_builder/code_builder.dart';
-
+import 'package:dart_style/dart_style.dart';
 import 'package:source_gen/source_gen.dart';
-import 'package:dio/dio.dart';
 import 'package:tuple/tuple.dart';
+
 import 'annotations.dart' as annotations;
 
 class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
@@ -164,6 +159,8 @@ class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
   Code _generateRequest(MethodElement m, ConstantReader httpMehod) {
     final _queryParamsVar = "queryParameters";
     final _optionsVar = "options";
+    final _dataVar = "data";
+
     final path = _generatePath(m, httpMehod);
     final queries = _getAnnotations(m, annotations.Query);
     final queryParameters = queries.map((p, ConstantReader r) {
@@ -178,11 +175,32 @@ class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
       "headers": literalMap(headers)
     });
 
+    final blocks = <Code>[];
+
+    blocks.add(literalMap({}, refer("String"), refer("dynamic"))
+        .assignFinal(_dataVar)
+        .statement);
+
+    final bodyName = _getAnnotation(m, annotations.Body)?.item1?.displayName;
+    if (bodyName != null) {
+      blocks.add(
+          refer("$_dataVar.addAll").call([refer("$bodyName ?? {}")]).statement);
+    }
+
+    final fields = _getAnnotations(m, annotations.Field).map((p, r) {
+      final value = r.peek("value")?.stringValue ?? p.displayName;
+      return MapEntry(literal(value), refer(p.displayName));
+    });
+    if (fields.isNotEmpty) {
+      blocks.add(literalMap(fields).assignFinal("fields").statement);
+      blocks.add(refer("$_dataVar.addAll").call([refer("fields")]).statement);
+    }
+
     final namedArguments = <String, Expression>{};
     namedArguments[_queryParamsVar] = refer(_queryParamsVar);
     namedArguments[_optionsVar] = options;
+    namedArguments[_dataVar] = refer(_dataVar);
 
-    final blocks = <Code>[];
     blocks.add(literalMap(queryParameters, refer("String"), refer("dynamic"))
         .assignFinal(_queryParamsVar)
         .statement);
@@ -214,7 +232,7 @@ class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
     final annosInParam = _getAnnotations(m, annotations.Header);
     final headersInParams = annosInParam.map((k, v) {
       final value = v.peek("value")?.stringValue ?? k.displayName;
-      return MapEntry(literal(value), literal(k.displayName));
+      return MapEntry(literal(value), refer(k.displayName));
     });
     headers.addAll(headersInParams);
     return headers;

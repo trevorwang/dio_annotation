@@ -18,8 +18,17 @@ abstract class RestClient {
   @GET("/profile/{id}")
   Future<Response<String>> profile(@Path("id") String id,
       {@Query("role") String role = "user",
-      @QueryMap() Map<String, dynamic> map = const {}});
+      @QueryMap() Map<String, dynamic> map = const {},
+      @Body() Map<String, dynamic> map2});
 
-  @POST("/profile/{id}")
-  Future<Response<String>> createProfile(@Path("id") String id);
+  @POST("/post")
+  @Headers({
+    "Accept": "application/json",
+  })
+  Future<Response<String>> createProfile(@Query('a') String a,
+      {@QueryMap() Map<String, dynamic> queryies,
+      @Header("Header-One") String header,
+      @Body() Map<String, dynamic> map2,
+      @Field() int field,
+      @Field("field-g") String ffff});
 }

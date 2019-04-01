@@ -1,7 +1,8 @@
 import 'demo.dart';
 
 void main(List<String> arguments) {
-  RestClient.instance()
+  final client = RestClient.instance();
+  client
       .ip(
     "bbb",
     queryies: {
@@ -13,4 +14,17 @@ void main(List<String> arguments) {
       .then((ip) {
     print(ip);
   });
+
+  client
+      .createProfile(
+        "addafasf",
+        header: "aaaaaa",
+        map2: {
+          "aaaa": 22222,
+          "ccccc": "cccccc",
+        },
+        ffff: "ssssss",
+        field: 555,
+      )
+      .then((it) => print(it));
 }

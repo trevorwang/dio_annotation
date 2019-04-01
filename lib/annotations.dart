@@ -68,11 +68,11 @@ class Body {
   const Body();
 }
 
-// @immutable
-// class Field {
-//   final String name;
-//   const Field([this.name]);
-// }
+@immutable
+class Field {
+  final String value;
+  const Field([this.value]);
+}
 
 @immutable
 class Path {
