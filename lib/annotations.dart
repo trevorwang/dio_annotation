@@ -84,7 +84,7 @@ class Path {
 class Query {
   final String value;
   final bool encoded;
-  const Query(this.value, {this.encoded});
+  const Query(this.value, {this.encoded = false});
 }
 
 @immutable

@@ -1,5 +1,8 @@
 import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/type.dart';
 import 'package:build/build.dart';
+import 'package:build/src/builder/build_step.dart';
+import 'package:built_collection/built_collection.dart';
 import 'package:code_builder/code_builder.dart';
 import 'package:dart_style/dart_style.dart';
 import 'package:source_gen/source_gen.dart';
@@ -146,9 +149,7 @@ class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
 
   Expression _generatePath(MethodElement m, ConstantReader method) {
     final paths = _getAnnotations(m, annotations.Path);
-
     String definePath = method.peek("path").stringValue;
-
     paths.forEach((k, v) {
       final value = v.peek("value")?.stringValue ?? k.displayName;
       definePath = definePath.replaceFirst("{$value}", "\$${k.displayName}");
@@ -162,6 +163,39 @@ class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
     final _dataVar = "data";
 
     final path = _generatePath(m, httpMehod);
+    final blocks = <Code>[];
+    _generateQueries(m, blocks, _queryParamsVar);
+    Map<Expression, Expression> headers = _generateHeaders(m);
+    _generateRequestBody(blocks, _dataVar, m);
+
+    final options = refer("RequestOptions").newInstance([], {
+      "method": literal(httpMehod.peek("method").stringValue),
+      "headers": literalMap(headers)
+    });
+    final namedArguments = <String, Expression>{};
+    namedArguments[_queryParamsVar] = refer(_queryParamsVar);
+    namedArguments[_optionsVar] = options;
+    namedArguments[_dataVar] = refer(_dataVar);
+
+    final responseType = _getResponseType(m.returnType);
+    final responseInnerType =
+        _getResponseInnerType(m.returnType) ?? responseType;
+    final typeArguments = <Reference>[];
+    if (responseType != null) {
+      typeArguments.add(refer(responseInnerType.displayName));
+    }
+    blocks.add(
+      refer("dio.request")
+          .call([path], namedArguments, typeArguments)
+          .returned
+          .statement,
+    );
+
+    return Block.of(blocks);
+  }
+
+  void _generateQueries(
+      MethodElement m, List<Code> blocks, String _queryParamsVar) {
     final queries = _getAnnotations(m, annotations.Query);
     final queryParameters = queries.map((p, ConstantReader r) {
       final value = r.peek("value")?.stringValue ?? p.displayName;
@@ -169,38 +203,6 @@ class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
     });
 
     final queryMap = _getAnnotations(m, annotations.QueryMap);
-    Map<Expression, Expression> headers = _generateHeaders(m);
-    final options = refer("RequestOptions").newInstance([], {
-      "method": literal(httpMehod.peek("method").stringValue),
-      "headers": literalMap(headers)
-    });
-
-    final blocks = <Code>[];
-
-    blocks.add(literalMap({}, refer("String"), refer("dynamic"))
-        .assignFinal(_dataVar)
-        .statement);
-
-    final bodyName = _getAnnotation(m, annotations.Body)?.item1?.displayName;
-    if (bodyName != null) {
-      blocks.add(
-          refer("$_dataVar.addAll").call([refer("$bodyName ?? {}")]).statement);
-    }
-
-    final fields = _getAnnotations(m, annotations.Field).map((p, r) {
-      final value = r.peek("value")?.stringValue ?? p.displayName;
-      return MapEntry(literal(value), refer(p.displayName));
-    });
-    if (fields.isNotEmpty) {
-      blocks.add(literalMap(fields).assignFinal("fields").statement);
-      blocks.add(refer("$_dataVar.addAll").call([refer("fields")]).statement);
-    }
-
-    final namedArguments = <String, Expression>{};
-    namedArguments[_queryParamsVar] = refer(_queryParamsVar);
-    namedArguments[_optionsVar] = options;
-    namedArguments[_dataVar] = refer(_dataVar);
-
     blocks.add(literalMap(queryParameters, refer("String"), refer("dynamic"))
         .assignFinal(_queryParamsVar)
         .statement);
@@ -209,17 +211,28 @@ class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
         [refer("${queryMap.keys.first.displayName} ?? {}")],
       ).statement);
     }
+  }
 
-    blocks.add(
-      refer("dio.request")
-          .call([
-            path,
-          ], namedArguments)
-          .returned
-          .statement,
-    );
+  void _generateRequestBody(
+      List<Code> blocks, String _dataVar, MethodElement m) {
+    blocks.add(literalMap({}, refer("String"), refer("dynamic"))
+        .assignFinal(_dataVar)
+        .statement);
 
-    return Block.of(blocks);
+    final _bodyName = _getAnnotation(m, annotations.Body)?.item1?.displayName;
+    if (_bodyName != null) {
+      blocks.add(refer("$_dataVar.addAll")
+          .call([refer("$_bodyName ?? {}")]).statement);
+    }
+
+    final fields = _getAnnotations(m, annotations.Field).map((p, r) {
+      final value = r.peek("value")?.stringValue ?? p.displayName;
+      return MapEntry(literal(value), refer(p.displayName));
+    });
+    if (fields.isNotEmpty) {
+      blocks
+          .add(refer("$_dataVar.addAll").call([literalMap(fields)]).statement);
+    }
   }
 
   Map<Expression, Expression> _generateHeaders(MethodElement m) {
@@ -236,5 +249,30 @@ class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
     });
     headers.addAll(headersInParams);
     return headers;
+  }
+
+  DartType _genericOf(DartType type) {
+    return type is InterfaceType && type.typeArguments.isNotEmpty
+        ? type.typeArguments.first
+        : null;
+  }
+
+  DartType _getResponseType(DartType type) {
+    return _genericOf(_genericOf(type));
+  }
+
+  DartType _getResponseInnerType(DartType type) {
+    final generic = _genericOf(type);
+
+    if (generic == null ||
+        _typeChecker(Map).isExactlyType(type) ||
+        _typeChecker(BuiltMap).isExactlyType(type)) return type;
+
+    if (generic.isDynamic) return null;
+
+    if (_typeChecker(List).isExactlyType(type) ||
+        _typeChecker(BuiltList).isExactlyType(type)) return generic;
+
+    return _getResponseInnerType(generic);
   }
 }
