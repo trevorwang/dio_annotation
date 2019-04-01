@@ -1,6 +1,12 @@
 import 'package:meta/meta.dart';
 
-enum HttpMethod { GET, POST, PATCH, PUT, DELETE }
+class HttpMethod {
+  static const String GET = "GET";
+  static const String POST = "POST";
+  static const String PATCH = "PATCH";
+  static const String PUT = "PUT";
+  static const String DELETE = "DELETE";
+}
 
 @immutable
 class DioApi {
@@ -10,7 +16,7 @@ class DioApi {
 
 @immutable
 class Method {
-  final HttpMethod method;
+  final String method;
   final String path;
   final Map<String, String> headers;
   const Method(this.method, this.path, {this.headers = const {}});
@@ -52,8 +58,8 @@ class DELETE extends Method {
 }
 
 @immutable
-class Header {
-  const Header();
+class Headers {
+  const Headers();
 }
 
 @immutable
@@ -69,6 +75,26 @@ class Body {
 
 @immutable
 class Path {
-  final String name;
-  const Path([this.name]);
+  final String value;
+  const Path([this.value]);
+}
+
+@immutable
+class Query {
+  final String value;
+  final bool encoded;
+  const Query(this.value, {this.encoded});
+}
+
+@immutable
+class QueryMap {
+  final bool encoded;
+  const QueryMap({this.encoded = false});
+}
+
+@immutable
+class QueryName {
+  final String value;
+  final bool encoded;
+  const QueryName(this.value, {this.encoded});
 }

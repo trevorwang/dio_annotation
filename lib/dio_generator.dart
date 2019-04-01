@@ -9,9 +9,9 @@ import 'package:code_builder/code_builder.dart';
 
 import 'package:source_gen/source_gen.dart';
 import 'package:dio/dio.dart';
-import 'annotations.dart' as dio;
+import 'annotations.dart' as annotations;
 
-class DioGenerator extends GeneratorForAnnotation<dio.DioApi> {
+class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
   static const String _baseUrlArg = 'baseUrl';
   static const String _headersArg = "headers";
 
@@ -36,9 +36,9 @@ class DioGenerator extends GeneratorForAnnotation<dio.DioApi> {
     final classBuilder = new Class((c) {
       c
         ..name = name
+        ..fields.add(_buildDefinitionTypeMethod(className))
         ..constructors.addAll([_generateConstructor(baseUrl)])
         ..methods.addAll(_parseMethods(element))
-        ..fields.add(_buildDefinitionTypeMethod(className))
         ..extend = refer(className);
     });
 
@@ -46,12 +46,10 @@ class DioGenerator extends GeneratorForAnnotation<dio.DioApi> {
     return new DartFormatter().format('${classBuilder.accept(emitter)}');
   }
 
-  Field _buildDefinitionTypeMethod(String superType) => Field(
-        (m) => m
-          ..name = 'dio'
-          ..modifier = FieldModifier.final$
-          ..assignment = Code("Dio()"),
-      );
+  Field _buildDefinitionTypeMethod(String superType) => Field((m) => m
+    ..name = 'dio'
+    ..modifier = FieldModifier.final$
+    ..assignment = refer('Dio').newInstance([]).code);
 
   Constructor _generateConstructor(String baseUrl) => Constructor((c) {
         c.body = Code("this.dio.options.baseUrl = '$baseUrl';");
@@ -66,12 +64,12 @@ class DioGenerator extends GeneratorForAnnotation<dio.DioApi> {
       }).map((m) => _generateMethod(m));
 
   final _methodsAnnotations = const [
-    dio.GET,
-    dio.POST,
-    dio.DELETE,
-    dio.PUT,
-    dio.PATCH,
-    dio.Method
+    annotations.GET,
+    annotations.POST,
+    annotations.DELETE,
+    annotations.PUT,
+    annotations.PATCH,
+    annotations.Method
   ];
 
   TypeChecker _typeChecker(Type type) => new TypeChecker.fromRuntime(type);
@@ -97,8 +95,77 @@ class DioGenerator extends GeneratorForAnnotation<dio.DioApi> {
   }
 
   Method _generateMethod(MethodElement m) {
+    final httpMehod = _getMethodAnnotation(m);
+
     return Method((mm) {
-      mm.name = m.name;
+      mm
+        ..name = m.displayName
+        ..modifier = MethodModifier.async
+        ..returns = refer(m.returnType.displayName);
+
+      /// required parameters
+      mm.requiredParameters.addAll(m.parameters
+          .where((it) => it.isNotOptional)
+          .map((it) => Parameter((p) => p
+            ..name = it.name
+            ..type = Reference(it.type.displayName))));
+
+      /// optional & positional parameters
+      mm.optionalParameters.addAll(m.parameters
+          .where((i) => i.isOptionalPositional)
+          .map((it) => Parameter((p) => p
+            ..name = it.name
+            ..type = Reference(it.type.displayName)
+            ..defaultTo = Code(it.defaultValueCode))));
+
+      /// named parameters
+      mm.optionalParameters.addAll(
+          m.parameters.where((i) => i.isNamed).map((it) => Parameter((p) => p
+            ..named = true
+            ..name = it.name
+            ..type = Reference(it.type.displayName)
+            ..defaultTo = Code(it.defaultValueCode))));
+
+      mm.body = _generateRequest(m, httpMehod);
     });
+  }
+
+  Expression _generatePath(MethodElement m, ConstantReader method) {
+    final paths = _getAnnotations(m, annotations.Path);
+
+    String definePath = method.peek("path").stringValue;
+
+    paths.forEach((k, v) {
+      final value = v.peek("value")?.stringValue ?? k.displayName;
+      definePath = definePath.replaceFirst("{$value}", "\$${k.displayName}");
+    });
+    return literal(definePath);
+  }
+
+  Code _generateRequest(MethodElement m, ConstantReader httpMehod) {
+    final path = _generatePath(m, httpMehod);
+    final queries = _getAnnotations(m, annotations.Query);
+
+    final queryParameters = queries.map((p, ConstantReader r) {
+      final value = r.peek("value")?.stringValue ?? p.displayName;
+      return MapEntry(literal(value), refer(p.displayName));
+    });
+
+    final options = refer("RequestOptions").newInstance([], {
+      "method": literal(httpMehod.peek("method").stringValue),
+    });
+
+    final namedArguments = <String, Expression>{};
+    namedArguments["queryParameters"] = literalMap(queryParameters);
+
+    namedArguments["options"] = options;
+    return Block.of([
+      refer("dio.request")
+          .call([
+            path,
+          ], namedArguments)
+          .returned
+          .statement,
+    ]);
   }
 }
