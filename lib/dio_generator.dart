@@ -9,6 +9,7 @@ import 'package:code_builder/code_builder.dart';
 
 import 'package:source_gen/source_gen.dart';
 import 'package:dio/dio.dart';
+import 'package:tuple/tuple.dart';
 import 'annotations.dart' as annotations;
 
 class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
@@ -82,6 +83,13 @@ class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
     return null;
   }
 
+  ConstantReader _getHeadersAnnotation(MethodElement method) {
+    final annot = _typeChecker(annotations.Headers)
+        .firstAnnotationOf(method, throwOnUnresolved: false);
+    if (annot != null) return new ConstantReader(annot);
+    return null;
+  }
+
   Map<ParameterElement, ConstantReader> _getAnnotations(
       MethodElement m, Type type) {
     var annot = <ParameterElement, ConstantReader>{};
@@ -92,6 +100,17 @@ class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
       }
     }
     return annot;
+  }
+
+  Tuple2<ParameterElement, ConstantReader> _getAnnotation(
+      MethodElement m, Type type) {
+    for (final p in m.parameters) {
+      final a = _typeChecker(type).firstAnnotationOf(p);
+      if (a != null) {
+        return Tuple2(p, ConstantReader(a));
+      }
+    }
+    return null;
   }
 
   Method _generateMethod(MethodElement m) {
@@ -153,9 +172,10 @@ class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
     });
 
     final queryMap = _getAnnotations(m, annotations.QueryMap);
-
+    Map<Expression, Expression> headers = _generateHeaders(m);
     final options = refer("RequestOptions").newInstance([], {
       "method": literal(httpMehod.peek("method").stringValue),
+      "headers": literalMap(headers)
     });
 
     final namedArguments = <String, Expression>{};
@@ -182,5 +202,21 @@ class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
     );
 
     return Block.of(blocks);
+  }
+
+  Map<Expression, Expression> _generateHeaders(MethodElement m) {
+    final anno = _getHeadersAnnotation(m);
+    final headersMap = anno?.peek("value")?.mapValue ?? {};
+    final headers = headersMap.map((k, v) {
+      return MapEntry(literal(k.toStringValue()), literal(v.toStringValue()));
+    });
+
+    final annosInParam = _getAnnotations(m, annotations.Header);
+    final headersInParams = annosInParam.map((k, v) {
+      final value = v.peek("value")?.stringValue ?? k.displayName;
+      return MapEntry(literal(value), literal(k.displayName));
+    });
+    headers.addAll(headersInParams);
+    return headers;
   }
 }

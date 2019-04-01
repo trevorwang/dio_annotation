@@ -18,49 +18,50 @@ class DioApi {
 class Method {
   final String method;
   final String path;
-  final Map<String, String> headers;
-  const Method(this.method, this.path, {this.headers = const {}});
+  const Method(this.method, this.path);
 }
 
 @immutable
 class GET extends Method {
-  final Map<String, String> headers;
-  const GET(String path, {this.headers})
-      : super(HttpMethod.GET, path, headers: headers ?? const {});
+  const GET(String path) : super(HttpMethod.GET, path);
 }
 
 @immutable
 class POST extends Method {
-  final Map<String, String> headers;
-  const POST(String path, {this.headers})
-      : super(HttpMethod.POST, path, headers: headers ?? const {});
+  const POST(String path) : super(HttpMethod.POST, path);
 }
 
 @immutable
 class PATCH extends Method {
-  final Map<String, String> headers;
-  const PATCH(final String path, {this.headers})
-      : super(HttpMethod.PATCH, path, headers: headers ?? const {});
+  const PATCH(final String path) : super(HttpMethod.PATCH, path);
 }
 
 @immutable
 class PUT extends Method {
-  final Map<String, String> headers;
-  const PUT(final String path, {this.headers})
-      : super(HttpMethod.PUT, path, headers: headers ?? const {});
+  const PUT(final String path) : super(HttpMethod.PUT, path);
 }
 
 @immutable
 class DELETE extends Method {
-  final Map<String, String> headers;
-  const DELETE(final String path, {this.headers})
-      : super(HttpMethod.DELETE, path, headers: headers ?? const {});
+  const DELETE(final String path) : super(HttpMethod.DELETE, path);
 }
 
 @immutable
 class Headers {
-  const Headers();
+  final Map<String, dynamic> value;
+  const Headers([this.value]);
 }
+
+@immutable
+class Header {
+  final String value;
+  const Header(this.value);
+}
+
+// @immutable
+// class HeaderMap {
+//   const HeaderMap();
+// }
 
 @immutable
 class Body {

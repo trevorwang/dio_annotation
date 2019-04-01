@@ -14,6 +14,7 @@ dependencies:
   source_gen:
   built_collection:
   code_builder:
+  tuple:
 dev_dependencies:
   flutter_test:
     sdk: flutter

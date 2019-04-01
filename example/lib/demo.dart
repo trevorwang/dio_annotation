@@ -8,8 +8,12 @@ abstract class RestClient {
   static RestClient instance() => _RestClient();
 
   @GET("/get")
+  @Headers({
+    "Header-One": " header 1",
+  })
   Future<Response<String>> ip(@Query('a') String a,
-      {@QueryMap() Map<String, dynamic> queryies});
+      {@QueryMap() Map<String, dynamic> queryies,
+      @Header("Header-One") String header});
 
   @GET("/profile/{id}")
   Future<Response<String>> profile(@Path("id") String id,
