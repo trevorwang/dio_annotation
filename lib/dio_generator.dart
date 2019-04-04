@@ -1,7 +1,6 @@
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:build/build.dart';
-import 'package:build/src/builder/build_step.dart';
 import 'package:built_collection/built_collection.dart';
 import 'package:code_builder/code_builder.dart';
 import 'package:dart_style/dart_style.dart';
@@ -10,9 +9,11 @@ import 'package:tuple/tuple.dart';
 
 import 'annotations.dart' as annotations;
 
-class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
-  static const String _baseUrlArg = 'baseUrl';
-  static const String _headersArg = "headers";
+class DioGenerator extends GeneratorForAnnotation<annotations.RestApi> {
+  static const String _baseUrlVar = 'baseUrl';
+  static const _queryParamsVar = "queryParameters";
+  static const _optionsVar = "options";
+  static const _dataVar = "data";
 
   @override
   String generateForAnnotatedElement(
@@ -21,7 +22,7 @@ class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
       final name = element.displayName;
       throw new InvalidGenerationSourceError(
         'Generator cannot target `$name`.',
-        todo: 'Remove the [DioApi] annotation from `$name`.',
+        todo: 'Remove the [RestApi] annotation from `$name`.',
       );
     }
     return _implementClass(element, annotation);
@@ -30,7 +31,7 @@ class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
   String _implementClass(ClassElement element, ConstantReader annotation) {
     final className = element.name;
     final name = '_$className';
-    final baseUrl = annotation?.peek(_baseUrlArg)?.stringValue ?? '';
+    final baseUrl = annotation?.peek(_baseUrlVar)?.stringValue ?? '';
 
     final classBuilder = new Class((c) {
       c
@@ -158,10 +159,6 @@ class DioGenerator extends GeneratorForAnnotation<annotations.DioApi> {
   }
 
   Code _generateRequest(MethodElement m, ConstantReader httpMehod) {
-    final _queryParamsVar = "queryParameters";
-    final _optionsVar = "options";
-    final _dataVar = "data";
-
     final path = _generatePath(m, httpMehod);
     final blocks = <Code>[];
     _generateQueries(m, blocks, _queryParamsVar);

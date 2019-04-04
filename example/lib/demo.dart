@@ -3,9 +3,9 @@ import 'package:dio/dio.dart';
 
 part 'demo.g.dart';
 
-@DioApi(baseUrl: "https://httpbin.org/")
+@RestApi(baseUrl: "https://httpbin.org/")
 abstract class RestClient {
-  static RestClient instance() => _RestClient();
+  static final RestClient instance = _RestClient();
 
   @GET("/get")
   @Headers({

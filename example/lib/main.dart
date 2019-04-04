@@ -1,7 +1,7 @@
 import 'demo.dart';
 
 void main(List<String> arguments) {
-  final client = RestClient.instance();
+  final client = RestClient.instance;
   client
       .ip(
     "bbb",

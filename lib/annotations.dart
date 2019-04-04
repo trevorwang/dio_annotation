@@ -9,9 +9,9 @@ class HttpMethod {
 }
 
 @immutable
-class DioApi {
+class RestApi {
   final String baseUrl;
-  const DioApi({this.baseUrl: "/"});
+  const RestApi({this.baseUrl: "/"});
 }
 
 @immutable
