@@ -13,7 +13,7 @@ abstract class RestClient {
   })
   Future<Response<String>> ip(@Query('a') String a,
       {@QueryMap() Map<String, dynamic> queryies,
-      @Header("Header-One") String header});
+      @Header("Header-Two") String header});
 
   @GET("/profile/{id}")
   Future<Response<String>> profile(@Path("id") String id,
@@ -29,6 +29,19 @@ abstract class RestClient {
       {@QueryMap() Map<String, dynamic> queryies,
       @Header("Header-One") String header,
       @Body() Map<String, dynamic> map2,
+      @Field() int field,
+      @Field("field-g") String ffff});
+
+  @PUT("/put")
+  Future<Response<String>> updateProfile2(@Query('a') String a,
+      {@QueryMap() Map<String, dynamic> queryies,
+      @Header("Header-One") String header,
+      @Field() int field,
+      @Field("field-g") String ffff});
+
+  @PATCH("/patch")
+  Future<Response<String>> updateProfile(@Query('a') String a,
+      {@QueryMap() Map<String, dynamic> queryies,
       @Field() int field,
       @Field("field-g") String ffff});
 }
