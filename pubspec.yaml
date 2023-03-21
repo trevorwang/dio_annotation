@@ -10,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  dio:
+  dio: any
   source_gen:
 dev_dependencies:
   flutter_test:
